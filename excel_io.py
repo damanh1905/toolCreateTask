@@ -21,7 +21,7 @@ STANDARD_COLUMNS = [
     ("ParentKey", 14, "Voi Sub-task: key Jira hoac Ma tam"),
     ("Summary", 40, "Tieu de issue (bat buoc)"),
     ("Description", 45, "Mo ta chi tiet"),
-    ("Assignee", 16, "Username nguoi duoc giao"),
+    ("Assignee", 16, "Username nguoi duoc giao; de trong thi lay JIRA_USERNAME"),
     ("DueDate", 14, "Han hoan thanh dinh dang YYYY-MM-DD"),
     ("TargetStart", 16, "Ngay bat dau, map vao JIRA_FIELD_TARGET_START"),
     ("TargetEnd", 16, "Ngay ket thuc, map vao JIRA_FIELD_TARGET_END"),
@@ -35,17 +35,12 @@ SIMPLE_COLUMNS = [
     ("Loại", 14, "Task hoac Sub-task"),
     ("Task cha", 18, "Voi Sub-task: nhap Ma tam hoac key Jira"),
     ("Tiêu đề", 45, "title/summary - bat buoc"),
-    ("Người xử lý", 20, "assignee - username Jira, bat buoc"),
+    ("Người xử lý", 20, "assignee - username Jira; de trong thi lay JIRA_USERNAME"),
     ("Mô tả", 45, "description"),
     ("Ghi chú", 45, "note - map vao JIRA_FIELD_NOTE"),
     ("Ngày bắt đầu", 16, "start_date - map vao JIRA_FIELD_TARGET_START"),
     ("Ngày kết thúc", 16, "end_date - map vao JIRA_FIELD_TARGET_END"),
     ("Deadline", 16, "deadline/duedate"),
-    ("Người tạo", 20, "Cot theo doi noi bo, tool khong gui len Jira"),
-    ("Ngày tạo", 16, "Cot theo doi noi bo, tool khong gui len Jira"),
-    ("Ngày update", 16, "Cot theo doi noi bo, tool khong gui len Jira"),
-    ("Trạng thái", 18, "Cot theo doi noi bo, tool khong gui len Jira"),
-    ("Thao tác", 16, "Cot theo doi noi bo, tool khong gui len Jira"),
 ]
 
 HEADERS = [c[0] for c in STANDARD_COLUMNS]
@@ -98,6 +93,13 @@ def _cell_to_str(value: Any) -> str:
     return str(value).strip()
 
 
+def _resolve_assignee(assignee: str) -> str:
+    value = assignee.strip()
+    if value:
+        return value
+    return os.getenv("JIRA_USERNAME", "").strip()
+
+
 def read_issues(path: str) -> list[IssueRow]:
     wb = load_workbook(path, data_only=True)
     ws = wb[SHEET_NAME] if SHEET_NAME in wb.sheetnames else wb.active
@@ -132,7 +134,7 @@ def read_issues(path: str) -> list[IssueRow]:
                 parent_key=get(values, "ParentKey", "Task cha"),
                 summary=get(values, "Summary", "Tiêu đề"),
                 description=get(values, "Description", "Mô tả"),
-                assignee=get(values, "Assignee", "Người xử lý"),
+                assignee=_resolve_assignee(get(values, "Assignee", "Người xử lý")),
                 due_date=get(values, "DueDate", "Deadline"),
                 target_start=get(values, "TargetStart", "Ngày bắt đầu"),
                 target_end=get(values, "TargetEnd", "Ngày kết thúc"),
@@ -161,7 +163,7 @@ def build_fields(row: IssueRow, project_key: str, parent_key: Optional[str]) -> 
         "project": {"key": project_key},
         "summary": row.summary.strip(),
         "issuetype": {"name": _normalize_issue_type(row.issue_type)},
-        "assignee": {"name": row.assignee.strip()},
+        "assignee": {"name": _resolve_assignee(row.assignee)},
     }
 
     if row.description:
@@ -240,9 +242,9 @@ def write_template(path: str, with_sample: bool = True) -> None:
 
     if with_sample:
         samples = [
-            ["T1", "Task", "", "Bổ sung suffix env vào version trên HTML5", "thanhvinh", "Mô tả task", "Ghi chú nếu có", "2026-07-01", "2026-07-10", "2026-07-15", "Trần Nguyên Phi", "2026-06-30", "", "Đang xử lý", ""],
-            ["", "Sub-task", "T1", "Thiết kế UI", "thanhvinh", "Mô tả subtask", "", "2026-07-01", "2026-07-08", "2026-07-10", "Trần Nguyên Phi", "2026-06-30", "", "Đang xử lý", ""],
-            ["", "Sub-task", "MYTVB2C-50784", "Gắn vào task đã tồn tại", "thanhvinh", "Mô tả subtask", "", "", "", "2026-07-15", "Trần Nguyên Phi", "2026-06-30", "", "Đang xử lý", ""],
+            ["T1", "Task", "", "Bổ sung suffix env vào version trên HTML5", "thanhvinh", "Mô tả task", "Ghi chú nếu có", "2026-07-01", "2026-07-10", "2026-07-15"],
+            ["", "Sub-task", "T1", "Thiết kế UI", "thanhvinh", "Mô tả subtask", "", "2026-07-01", "2026-07-08", "2026-07-10"],
+            ["", "Sub-task", "MYTVB2C-50784", "Gắn vào task đã tồn tại", "thanhvinh", "Mô tả subtask", "", "", "", "2026-07-15"],
         ]
         for r_idx, sample in enumerate(samples, start=2):
             for c_idx, val in enumerate(sample, start=1):

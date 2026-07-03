@@ -1,73 +1,138 @@
 # Tool Import Task/Sub-task lên Jira từ Excel
 
-Tool import Excel lên Jira, logic bám theo hàm `create_and_update_issue` trong dự án.
+## Lệnh chạy nhanh
 
-## Cài đặt
+### 1. Kiểm tra Python
 
-```bash
-pip install -r requirements.txt
-copy .env.example .env
+```powershell
+python --version
+pip --version
 ```
 
-## Cấu hình `.env`
+Nếu chưa có Python, tải và cài tại: https://www.python.org/downloads/
+
+Khi cài nhớ tick **Add python.exe to PATH**, sau đó mở lại PowerShell.
+
+### 2. Mở thư mục dự án
+
+```powershell
+cd C:\Users\Admin\Documents\vnpt\toolCreateTask
+```
+
+### 3. Cài thư viện
+
+```powershell
+pip install -r requirements.txt
+```
+
+### 4. Tạo file cấu hình `.env`
+
+```powershell
+notepad .env
+```
+
+Dán cấu hình mẫu:
 
 ```env
 JIRA_URL=https://dvs.vnptmedia.vn
-JIRA_TOKEN=<token>
-JIRA_USERNAME=<username>
+JIRA_TOKEN=<token_cua_ban>
+JIRA_USERNAME=<username_jira>
+JIRA_COOKIE=<cookie_neu_can>
+JIRA_VERIFY_SSL=true
 
 JIRA_DEFAULT_PROJECT_KEY=MYTVB2C
+JIRA_DEFAULT_ISSUE_TYPE=Task
+JIRA_SUBTASK_ISSUE_TYPE=Sub-Task
 JIRA_FIELD_TARGET_START=customfield_11002
 JIRA_FIELD_TARGET_END=customfield_11003
-JIRA_FIELD_NOTE=customfield_xxxxx
-JIRA_REFERENCE_ISSUE=MYTVB2C-50784
+JIRA_FIELD_NOTE=customfield_12200
+JIRA_REFERENCE_ISSUE=MYTVB2C-51653
 ```
 
-## Tạo file mẫu
+### 5. Test kết nối Jira
 
-```bash
-python main.py template -o file_mau_don_gian.xlsx
-```
-
-## Các cột Excel
-
-| Cột Excel | Field trong dự án | Gửi lên Jira |
-|-----------|-------------------|--------------|
-| `Loại` | `issuetype` / `is_task` | `Task` hoặc `Sub-task` |
-| `Task cha` | `parent_key` | Bắt buộc với Sub-task |
-| `Tiêu đề` | `title` / `summary` | Bắt buộc |
-| `Người xử lý` | `assignee` | Bắt buộc |
-| `Mô tả` | `description` | Có |
-| `Ghi chú` | `note` | Update `JIRA_FIELD_NOTE` sau khi tạo |
-| `Ngày bắt đầu` | `start_date` | `JIRA_FIELD_TARGET_START` |
-| `Ngày kết thúc` | `end_date` | `JIRA_FIELD_TARGET_END` |
-| `Deadline` | `deadline` | `duedate` |
-| `Mã` | — | Mã tạm nội bộ, liên kết subtask trong file |
-
-Các cột `Người tạo`, `Ngày tạo`, `Ngày update`, `Trạng thái`, `Thao tác` chỉ để theo dõi, không gửi lên Jira.
-
-## Logic giống dự án
-
-- **Task**: `create_task` — labels rỗng, có start/end
-- **Sub-task**: `create_subtask` — cần `Task cha`
-- Sau khi tạo: update `note` → **add vào sprint** (`add_issue_to_sprint`) — bắt buộc để web lấy được
-- Nếu add sprint thất bại → xóa issue vừa tạo (giống dự án)
-
-## Chạy
-
-```bash
-các lệnh kiểm tra:
+```powershell
 python main.py test
-Kết nối Jira
+```
 
+Test với issue cụ thể:
+
+```powershell
+python main.py test -i MYTVB2C-51653
+```
+
+### 6. Tạo file Excel mẫu
+
+```powershell
+python main.py template -o file_mau.xlsx
+```
+
+Các cột trong Excel:
+
+```text
+Mã | Loại | Task cha | Tiêu đề | Người xử lý | Mô tả | Ghi chú | Ngày bắt đầu | Ngày kết thúc | Deadline
+```
+
+`Người xử lý` để trống sẽ tự lấy `JIRA_USERNAME` trong `.env`.
+
+### 7. Xem cây task trong sprint
+
+```powershell
+python main.py sprint-tree -k MYTVB2C-51653
+```
+
+Tìm task theo tiêu đề:
+
+```powershell
+python main.py sprint-tree -k MYTVB2C-51653 --lookup "tên task cần tìm"
+```
+
+### 8. Kiểm tra file Excel
+
+```powershell
 python main.py validate file_mau.xlsx
-File Excel hợp lệ
+```
 
+### 9. Chạy thử, không tạo issue thật
+
+```powershell
 python main.py import file_mau.xlsx --dry-run
-Xem trước, không tạo
+```
 
-python main.py sprint-tree --issue-key ...
-Xem task trong sprint
+### 10. Import thật lên Jira
 
+```powershell
+python main.py import file_mau.xlsx
+```
+
+### 11. Một số lệnh thêm
+
+Chỉ định issue tham chiếu sprint khác:
+
+```powershell
+python main.py import file_mau.xlsx -k MYTVB2C-50784
+```
+
+Bỏ qua dòng lỗi và chạy tiếp:
+
+```powershell
+python main.py import file_mau.xlsx --continue-on-error
+```
+
+Tạo file mẫu không có dòng ví dụ:
+
+```powershell
+python main.py template -o file_mau.xlsx --no-sample
+```
+
+## Thứ tự chạy thường dùng
+
+```powershell
+cd C:\Users\Admin\Documents\vnpt\toolCreateTask
+pip install -r requirements.txt
+python main.py test
+python main.py template -o file_mau.xlsx 
+python main.py validate file_mau.xlsx
+python main.py import file_mau.xlsx --dry-run
 python main.py import file_mau.xlsx
 ```

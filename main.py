@@ -56,7 +56,9 @@ def _validate_rows(rows: list[IssueRow]) -> list[str]:
         if not r.summary:
             errors.append(f"{prefix}: thieu cot 'Tiêu đề'")
         if not r.assignee:
-            errors.append(f"{prefix}: thieu cot 'Người xử lý'")
+            errors.append(
+                f"{prefix}: thieu cot 'Người xử lý' (hoac dat JIRA_USERNAME trong .env)"
+            )
         if not r.issue_type:
             errors.append(f"{prefix}: thieu cot 'Loại'")
 
